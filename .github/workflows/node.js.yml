@@ -30,8 +30,8 @@ jobs:
     - run: npm test
 
     - name: Test & publish code coverage
-        uses: paambaati/codeclimate-action@v2.6.0
-        env:
+      uses: paambaati/codeclimate-action@v2.6.0
+      env:
         CC_TEST_REPORTER_ID: 6e39031d1f6553f3d588f475cc0cf2601fe16099b1367d82606997fab83bb6e9
       with:
         coverageCommand: yarn coverage
