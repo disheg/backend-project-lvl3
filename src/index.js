@@ -2,37 +2,47 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import cheerio from 'cheerio';
+import _ from 'lodash';
 import {
-  updateAssetsLinks,
+  updateAssets,
   isValidURL,
-  createAssetPath,
+  downloadAssets,
 } from './utils.js';
 
-const getAssetsLinks = (html) => {
-  const $ = cheerio.load(html);
-  const images = $('img');
-  return images;
+const assets = {
+  img: {
+    tag: 'img',
+    linkAttr: 'src',
+  },
+  link: {
+    tag: 'link',
+    linkAttr: 'href',
+  },
+  script: {
+    tag: 'script',
+    linkAttr: 'src',
+  },
 };
 
-const downloadAssets = (directory, websiteName, url, assets) => {
-  const assetsUrls = [...assets].map((asset) => asset.attribs.src);
-  return fs.promises.mkdir(path.resolve(directory, `${websiteName}_files`))
-    .then(() => {
-      assetsUrls.forEach((assetUrl) => {
-        const validUrl = isValidURL(assetUrl) ? assetUrl : `${url}${assetUrl}`;
-        return axios({
-          method: 'GET',
-          url: validUrl,
-          responseType: 'stream',
+const getAssetsLinks = (html, assetsCollection) => {
+  const $ = cheerio.load(html);
+  const result = _.flattenDeep(Object.values(assetsCollection)
+    .map((asset) => {
+      const nodes = $(asset.tag);
+      if (nodes.length === 0) {
+        return null;
+      }
+      return [...nodes]
+        .map((node) => {
+          const link = node.attribs[asset.linkAttr];
+          if (isValidURL(link)) {
+            return null;
+          }
+          return link;
         })
-          .then((response) => response.data
-            .pipe(fs.createWriteStream(path.resolve(
-              directory,
-              `${websiteName}_files`,
-              `${websiteName}${createAssetPath(assetUrl)}`,
-            ))));
-      });
-    });
+        .filter((node) => !!node);
+    }));
+  return result;
 };
 
 const createSiteFile = (directory, fileName, data) => fs.promises
@@ -40,7 +50,6 @@ const createSiteFile = (directory, fileName, data) => fs.promises
 
 const getWebsiteName = (url) => {
   const newUrl = new URL(url);
-  console.log(path.parse(url))
   const { hostname, pathname } = newUrl;
   const result = `${hostname}${pathname}`.replace(/[.*+?^=!:${}()|\[\]\/\\]/g, '-');
   return result.slice(0, result.length - 1);
@@ -60,9 +69,9 @@ const pageLoad = (directory, url) => {
     .then((response) => {
       console.log('Site got');
       const html = response.data;
-      const assetsLinks = getAssetsLinks(html);
-      console.log('Assets got');
-      const updatedHtml = updateAssetsLinks(html, websiteName);
+      const assetsLinks = getAssetsLinks(html, assets);
+      console.log('Assets got', assetsLinks);
+      const updatedHtml = updateAssets(html, websiteName);
       console.log('Assetslinks was updated');
       createSiteFile(websitePath, `${websiteName}.html`, updatedHtml);
       console.log('WebSite was downloaded');
@@ -70,10 +79,7 @@ const pageLoad = (directory, url) => {
       console.log('Assets was download');
     })
     .catch((err) => {
-      if (fs.existsSync(path.resolve('log.txt'))) {
-        fs.appendFileSync(path.resolve('log.txt'), err.message);
-      }
-      fs.promises.writeFile(path.resolve('log.txt'), err.message);
+      console.log(err.message);
     });
 };
 
