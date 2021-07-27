@@ -2,6 +2,7 @@ import cheerio from 'cheerio';
 import path from 'path';
 import axios from 'axios';
 import fs from 'fs';
+import * as debuglog from 'axios-debug-log';
 
 export const createAssetPath = (assetPath) => {
   const { dir, name, ext } = path.parse(assetPath);

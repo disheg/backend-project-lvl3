@@ -58,6 +58,8 @@ const getWebsiteName = (url) => {
 const getSiteHtml = (url) => axios.get(url);
 
 const pageLoad = (directory, url) => {
+  console.log('directory', directory);
+  console.log('url', url);
   const websiteName = getWebsiteName(url);
   const websitePath = path.resolve(directory, websiteName);
   const createProjectFolder = (name) => fs.promises.mkdir(name);
